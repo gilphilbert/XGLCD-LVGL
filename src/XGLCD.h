@@ -57,12 +57,17 @@
 #ifndef _XGLCD_H_
 #define _XGLCD_H_
 
+
 /* BEGIN OF USER DEFINES ************************************************************************************/
 // If you do not want to use LCD auto-detection, manual enable one (and only one) of below LCD types
 // #define XG_LCD_50             // 5.0" 800x480 LCD
 // #define XG_LCD_56             // 5.6" 640x480 LCD
 // #define XG_LCD_90             // 7.0" 800x480 LCD
 // #define XG_LCD_90             // 9.0" 800x480 LCD
+
+// If your screen doesn't feature the FT5206 (for example, the East Rising displays from BuyDisplay.com) comment out this line and uncomment the line below for the GSL1680 driver
+#define XG_LCD_USE_FT5206
+//#define XG_LCD_USE_GSL1680
 /* END OF USER DEFINES ************************************************************************************/
 
 
@@ -90,7 +95,7 @@
 // CPU module auto-detection based on the user selected board type in the Arduino IDE
 #if defined(ARDUINO_ARCH_SAMD)                                                  // Arduino MKR family (and all other SAMD modules, but only the MKR will work)
     #define XG_CPU_MKR
-#elif defined(ARDUINO_ESP32_DEV)                                                // ESP32 Development Kit C / Pycom modules (without Python of course)
+#elif defined(ARDUINO_ESP32_DEV) || defined(ARDUINO_FEATHER_ESP32)              // ESP32 Development Kit C / Pycom modules (without Python of course)
 // Pycom modules (the latest only) have 8Mbit Flash and 4Mbit PSRAM
     #define XG_CPU_ESP32
 #elif defined(PLATFORM_ID)                                                      // Particle Family, this library should be used in the Particle IDE not in the Arduino IDE
@@ -262,7 +267,11 @@
                                             r = (dev->data_buf[0]>>8) + (dev->data_buf[1]<<24);\
                                             dev->miso_dlen.usr_miso_dbitlen = 15;\
                                             }
+#if defined(ARDUINO_FEATHER_ESP32) //the Adafruit Huzzah ESP32 board has an odd pin definition
+    #define _spibegin()                     {SPI.begin(5, 19, 18, 4);}
+#else
     #define _spibegin()                     {SPI.begin();}
+#endif
     #define _spisetDataMode(datamode)       SPI.setDataMode(datamode)
     #define _spisetBitOrder(order)          SPI.setBitOrder(order)
     #define _spisetSpeed(s)                 SPI.setFrequency(s)

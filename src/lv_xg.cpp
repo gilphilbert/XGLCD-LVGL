@@ -25,18 +25,63 @@
 
 #include "lvgl.h"
 #include "XGLCD.h"
-#include <FT5206.h>
+
+#if defined(XG_LCD_USE_FT5206)
+  #include <FT5206.h>
 
               
-#define CTP_INT           15    // touch data ready for read from FT5206 touch controller
-#define FT5206_RST        16
+  #define CTP_INT           15    // touch data ready for read from FT5206 touch controller
+  #define FT5206_RST        16
 
-uint8_t registers[FT5206_REGISTERS];
-uint16_t new_coordinates[5][2];
-uint8_t current_touches = 0;
+  uint8_t registers[FT5206_REGISTERS];
+  uint16_t new_coordinates[5][2];
+  uint8_t current_touches = 0;
 
 
-FT5206 cts = FT5206(CTP_INT);
+  FT5206 cts = FT5206(CTP_INT);
+
+
+  bool my_tp_read(lv_indev_drv_t * indev, lv_indev_data_t *data) {
+    if (cts.touched()){
+      cts.getTSregisters(registers);
+      current_touches = cts.getTScoordinates(new_coordinates, registers);
+      if (current_touches < 1) {
+        data->state = LV_INDEV_STATE_REL;
+        return false;
+      } 
+      data->point.x = new_coordinates[0][0];
+      data->point.y = new_coordinates[0][1];
+      data->state = LV_INDEV_STATE_PR;
+    }
+    else
+    data->state = LV_INDEV_STATE_REL;
+    return false;
+  }  
+#elif defined(XG_LCD_USE_GSL1680)
+  #include <GSL1680.h>
+
+  #define CTP_WAKE    14
+  #define CTP_INTRPT  32
+
+  GSL1680 TS = GSL1680();
+  TS.begin(CTP_WAKE, CTP_INTRPT);
+
+  bool my_tp_read(lv_indev_drv_t * indev, lv_indev_data_t *data) {
+    if (digitalRead(CTP_INTRPT) == HIGH){
+      int NBFinger = TS.dataread();
+      if (NBFinger < 1) {
+        data->state = LV_INDEV_STATE_REL;
+        return false;
+      } 
+      data->point.x = TS.readFingerX(0);
+      data->point.y = nTS.readFingerY(0);
+      data->state = LV_INDEV_STATE_PR;
+    }
+    else
+    data->state = LV_INDEV_STATE_REL;
+    return false;
+  }
+#endif
 
 XGLCD _tft = XGLCD();
 
@@ -63,22 +108,6 @@ void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color
 //   return false;                                                               // Return false because no more to be read
 // }
 
-bool my_tp_read(lv_indev_drv_t * indev, lv_indev_data_t *data) {
-  if (cts.touched()){
-     cts.getTSregisters(registers);
-     current_touches = cts.getTScoordinates(new_coordinates, registers);
-     if (current_touches < 1) {
-      data->state = LV_INDEV_STATE_REL;
-      return false;
-     } 
-     data->point.x = new_coordinates[0][0];
-     data->point.y = new_coordinates[0][1];
-     data->state = LV_INDEV_STATE_PR;
-  }
-  else
-   data->state = LV_INDEV_STATE_REL;
-  return false;
-}  
 
 void lv_xg_init() {
 
@@ -86,7 +115,8 @@ void lv_xg_init() {
   
   _tft.begin();     
   delay(300);
-#if defined(FT5206_RST)  
+
+#if defined(XG_LCD_USE_FT5206) && defined(FT5206_RST)  
   pinMode(FT5206_RST, OUTPUT);
   digitalWrite(FT5206_RST, HIGH);
   delay(10);
@@ -94,9 +124,10 @@ void lv_xg_init() {
   delay(220);
   digitalWrite(FT5206_RST, HIGH);
   delay(300);
-#endif  
+
   cts.begin();
   cts.setTouchLimit(1);
+#endif  
 
   lv_disp_buf_init(&disp_buf, buf, NULL, LV_HOR_RES_MAX * 10);                                                           // Start the LCD
 
