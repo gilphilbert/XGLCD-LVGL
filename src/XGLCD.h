@@ -66,7 +66,7 @@
 // #define XG_LCD_90             // 9.0" 800x480 LCD
 
 // If your screen doesn't feature the FT5206 (for example, the East Rising displays from BuyDisplay.com) comment out this line and uncomment the line below for the GSL1680 driver
-#define XG_LCD_USE_FT5206
+//#define XG_LCD_USE_FT5206
 //#define XG_LCD_USE_GSL1680
 /* END OF USER DEFINES ************************************************************************************/
 
